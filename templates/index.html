@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Court Data Fetcher - Indian Courts Case Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .search-panel, .results-panel, .history-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .search-panel h2, .results-panel h2, .history-panel h2 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .case-info {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .case-info h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+            min-width: 140px;
+        }
+
+        .info-value {
+            color: #333;
+            flex: 1;
+            text-align: right;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .history-panel {
+            grid-column: 1 / -1;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .history-table th, .history-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .history-table th {
+            background: #f8f9ff;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-success {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .status-error {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .search-panel, .results-panel, .history-panel {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ Court Data Fetcher</h1>
+            <p>Search Indian Court Cases - Delhi District Court Portal</p>
+        </div>
+
+        <div class="main-content">
+            <div class="search-panel">
+                <h2>🔍 Case Search</h2>
+                
+                <div id="error-message" class="error"></div>
+                <div id="success-message" class="success"></div>
+                
+                <form id="search-form">
+                    <div class="form-group">
+                        <label for="case_type">Case Type</label>
+                        <select id="case_type" name="case_type" required>
+                            <option value="">Select Case Type</option>
+                            <option value="CRL">Criminal (CRL)</option>
+                            <option value="CIV">Civil (CIV)</option>
+                            <option value="MAT">Matrimonial (MAT)</option>
+                            <option value="CHQ">Cheque Bounce (CHQ)</option>
+                            <option value="ARB">Arbitration (ARB)</option>
+                            <option value="COM">Commercial (COM)</option>
+                            <option value="FAM">Family Court (FAM)</option>
+                            <option value="LAB">Labour Court (LAB)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="case_number">Case Number</label>
+                        <input type="text" id="case_number" name="case_number" 
+                               placeholder="Enter case number (e.g., 12345)" 
+                               pattern="[0-9]+" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filing_year">Filing Year</label>
+                        <select id="filing_year" name="filing_year" required>
+                            <option value="">Select Year</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="search-btn" id="search-btn">
+                        🔍 Search Case Details
+                    </button>
+                </form>
+
+                <div id="loading" class="loading">
+                    Fetching case details...
+                </div>
+            </div>
+
+            <div class="results-panel">
+                <h2>📋 Case Details</h2>
+                
+                <div id="results" class="results">
+                    <div class="case-info">
+                        <h3 id="case-title">Case Information</h3>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Parties:</span>
+                            <span class="info-value" id="parties-names">-</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Filing Date:</span>
+                            <span class="info-value" id="filing-date">-</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Next Hearing:</span>
+                            <span class="info-value" id="next-hearing">-</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Case Status:</span>
+                            <span class="info-value" id="case-status">-</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Court:</span>
+                            <span class="info-value" id="court-name">-</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Judge:</span>
+                            <span class="info-value" id="judge-name">-</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span class="info-label">Latest Order:</span>
+                            <span class="info-value">
+                                <button class="download-btn" id="download-pdf" onclick="downloadPDF()">
+                                    📄 Download PDF
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="no-results" style="text-align: center; padding: 40px; color: #666;">
+                    <p>🔍 Enter case details to search</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="history-panel">
+            <h2>📊 Recent Searches</h2>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Case Type</th>
+                        <th>Case Number</th>
+                        <th>Filing Year</th>
+                        <th>Search Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="history-tbody">
+                    <!-- Recent queries will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Populate years dropdown
+        const currentYear = new Date().getFullYear();
+        const yearSelect = document.getElementById('filing_year');
+        for (let year = currentYear; year >= 2000; year--) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        }
+
+        // Form submission
+        document.getElementById('search-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const searchBtn = document.getElementById('search-btn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const noResults = document.getElementById('no-results');
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            
+            // Reset messages
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            
+            // Show loading state
+            searchBtn.disabled = true;
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            noResults.style.display = 'none';
+            
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Populate results
+                    document.getElementById('case-title').textContent = 
+                        `${data.data.case_type}/${data.data.case_number}/${data.data.filing_year}`;
+                    document.getElementById('parties-names').textContent = data.data.parties_names;
+                    document.getElementById('filing-date').textContent = data.data.filing_date;
+                    document.getElementById('next-hearing').textContent = data.data.next_hearing_date;
+                    document.getElementById('case-status').textContent = data.data.case_status || 'Active';
+                    document.getElementById('court-name').textContent = data.data.court_name || 'Delhi District Court';
+                    document.getElementById('judge-name').textContent = data.data.judge_name || 'Not Available';
+                    
+                    // Store PDF link for download
+                    window.currentPdfLink = data.data.latest_order_link;
+                    
+                    results.style.display = 'block';
+                    successDiv.textContent = 'Case details fetched successfully!';
+                    successDiv.style.display = 'block';
+                    
+                    // Add to recent searches
+                    addToRecentSearches(data.data);
+                    
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                errorDiv.textContent = error.message || 'Failed to fetch case details. Please try again.';
+                errorDiv.style.display = 'block';
+                noResults.style.display = 'block';
+            } finally {
+                searchBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        // PDF download function
+        async function downloadPDF() {
+            if (!window.currentPdfLink) {
+                alert('No PDF link available');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/download_pdf?link=${encodeURIComponent(window.currentPdfLink)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('PDF download initiated! (Demo: ' + data.link + ')');
+                } else {
+                    alert('Failed to download PDF: ' + data.error);
+                }
+            } catch (error) {
+                console.error('PDF download error:', error);
+                alert('Failed to download PDF');
+            }
+        }
+
+        // Add search to recent history
+        function addToRecentSearches(caseData) {
+            const tbody = document.getElementById('history-tbody');
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td>${caseData.case_type}</td>
+                <td>${caseData.case_number}</td>
+                <td>${caseData.filing_year}</td>
+                <td>${new Date().toLocaleString()}</td>
+                <td><span class="status-success">Success</span></td>
+            `;
+            
+            // Insert at the beginning
+            tbody.insertBefore(row, tbody.firstChild);
+            
+            // Keep only last 10 entries
+            while (tbody.children.length > 10) {
+                tbody.removeChild(tbody.lastChild);
+            }
+        }
+
+        // Form validation
+        document.getElementById('case_number').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Court Data Fetcher initialized');
+        });
+    </script>
+</body>
+</html>
